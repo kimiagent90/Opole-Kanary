@@ -10,12 +10,17 @@ const H = { 'Content-Type': 'application/json', 'x-client-id': cid };
 // ---- карта ----
 const map = L.map('map', { zoomControl: false }).setView(OPOLE, 13);
 let tiles;
+const TILES = {
+  osm: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png', '© OpenStreetMap'],
+  light: ['https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', '© OpenStreetMap © CARTO'],
+  dark: ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', '© OpenStreetMap © CARTO'],
+};
 const setTheme = (t) => {
   if (tiles) map.removeLayer(tiles);
-  tiles = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${t === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`,
-    { maxZoom: 19, attribution: '© OpenStreetMap © CARTO' }).addTo(map);
+  const [url, attribution] = TILES[t] || TILES.osm;
+  tiles = L.tileLayer(url, { maxZoom: 19, attribution }).addTo(map);
 };
-setTheme(store.get('theme', 'dark'));
+setTheme(store.get('theme', 'osm'));
 const repLayer = L.layerGroup().addTo(map), busLayer = L.layerGroup().addTo(map);
 let meMarker, myPos = null, reports = [], buses = [];
 
@@ -105,7 +110,7 @@ async function loadBuses() {
 loadBuses(); setInterval(loadBuses, 10000);
 
 // ---- настройки ----
-$('#setTheme').value = store.get('theme', 'dark');
+$('#setTheme').value = store.get('theme', 'osm');
 $('#setTheme').onchange = (e) => { store.set('theme', e.target.value); setTheme(e.target.value); };
 $('#setNotify').checked = store.get('notify', false);
 $('#setNotify').onchange = async (e) => {
