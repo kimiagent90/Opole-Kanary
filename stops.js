@@ -4,7 +4,8 @@ const fs = require('fs');
 const LINES = ['1','3','5','7','8','9','10','11','12','13','14','15','16','17','18','21','25','28','30','80','N1','N2','SZ1','SZ2','SZ4','SZ10','SZ20'];
 const KNOWN = new Set(LINES);
 const UA = 'KanaryOpole/0.1 (https://github.com/kimiagent90/Opole-Kanary)';
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 
 const strip = (h) => String(h).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/\s+/g, ' ').trim();
 const norm = (s) => String(s || '').toLowerCase().replace(/[.,]/g, ' ').replace(/\s*[-–—]\s*/g, ' - ').replace(/\s+/g, ' ').trim();
@@ -44,14 +45,14 @@ function toStops(elements, mzk) {
 }
 
 async function fetchOverpass(bbox) {
-  const q = `[out:json][timeout:60];(node["highway"="bus_stop"](${bbox});node["public_transport"="platform"]["bus"="yes"](${bbox}););out body;`;
+  const q = `[out:json][timeout:50];(node["highway"="bus_stop"](${bbox});node["public_transport"="platform"]["bus"="yes"](${bbox}););out body;`;
   let err;
   for (const ep of OVERPASS) {
     try {
       const r = await fetch(ep, { method: 'POST', headers: { 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) });
       if (!r.ok) throw new Error(ep + ' HTTP ' + r.status);
       return (await r.json()).elements || [];
-    } catch (e) { err = e; }
+    } catch (e) { err = e; console.error('stops: Overpass:', e.message); }
   }
   throw err;
 }
@@ -65,6 +66,7 @@ async function fetchMzk() {
 function createStore(file, bbox) {
   const state = { status: 'loading', updatedAt: 0, matched: 0, stops: [], note: '' };
   try { Object.assign(state, JSON.parse(fs.readFileSync(file, 'utf8')), { status: 'cached' }); } catch {}
+  let retries = 0;
   async function refresh() {
     try {
       const elements = await fetchOverpass(bbox);
@@ -79,6 +81,7 @@ function createStore(file, bbox) {
       if (!state.stops.length) state.status = 'error';
       state.note = String(e.message || e);
       console.error('stops: błąd pobierania:', state.note);
+      if (!state.stops.length && ++retries <= 15) setTimeout(refresh, 120_000);
     }
   }
   const old = () => Date.now() - state.updatedAt > 7 * 86400_000;
