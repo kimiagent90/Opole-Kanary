@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f17">
+<meta name="description" content="Kanary Opole — zgłoszenia kontrolerów biletów w komunikacji MZK Opole.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kanary">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/styles.css">
+<title>Kanary Opole</title>
+</head>
+<body>
+<div id="offline" hidden>Brak połączenia. Pokazuję ostatnie dane.</div>
+
+<main>
+  <section id="tab-map" class="tab active"><div id="map"></div>
+    <div id="busStatus" class="pill"></div>
+    <button id="locate" class="fab small" aria-label="Moja lokalizacja">◎</button>
+    <button id="report" class="fab">🚨 Widzę kontrolera</button>
+  </section>
+
+  <section id="tab-buses" class="tab tabfull"><h2>Autobusy na żywo</h2>
+    <p class="muted">Oficjalna mapa MZK Opole (DIP / OnTime). Dane pochodzą bezpośrednio z dip.mzkopole.pl.</p>
+    <iframe id="dip" title="DIP MZK Opole" src="https://dip.mzkopole.pl/" loading="lazy" referrerpolicy="no-referrer"></iframe>
+    <a class="btn" href="https://dip.mzkopole.pl/" target="_blank" rel="noopener">Otwórz DIP w nowej karcie</a>
+  </section>
+
+  <section id="tab-feed" class="tab"><h2>Aktywność</h2><div id="feedList"></div></section>
+
+  <section id="tab-settings" class="tab"><h2>Ustawienia</h2>
+    <label class="row">Motyw mapy
+      <select id="setTheme"><option value="dark">Ciemny</option><option value="light">Jasny</option></select></label>
+    <label class="row">Powiadomienia o nowych zgłoszeniach
+      <input type="checkbox" id="setNotify"></label>
+    <div class="row">Geolokalizacja <span id="geoState">—</span>
+      <button id="geoAsk" class="btn">Zezwól</button></div>
+    <p class="muted">Kanary Opole to nieoficjalna aplikacja, niezwiązana z MZK Opole.
+      Zgłoszenia tworzą użytkownicy i mogą być nieprecyzyjne. Zgłoszenie znika po 45 minutach bez potwierdzeń.
+      Mapa: © OpenStreetMap, © CARTO.</p>
+  </section>
+</main>
+
+<div id="sheet" hidden>
+  <div class="sheet-body">
+    <h3>Nowe zgłoszenie</h3>
+    <p class="muted" id="placeInfo"></p>
+    <button id="pickOnMap" class="btn ghost">Wskaż miejsce na mapie</button>
+    <label>Liczba kontrolerów
+      <div class="stepper"><button id="minus" aria-label="Mniej">−</button><span id="cnt">1</span><button id="plus" aria-label="Więcej">+</button></div></label>
+    <label>Środek transportu <select id="transport"><option>Autobus</option></select></label>
+    <label>Numer linii (opcjonalnie) <input id="route" maxlength="4" inputmode="text" placeholder="np. 12"></label>
+    <div class="actions"><button id="cancel" class="btn ghost">Anuluj</button><button id="send" class="btn">Wyślij</button></div>
+    <p id="err" class="err"></p>
+  </div>
+</div>
+
+<nav>
+  <button data-tab="map" class="on">🗺<span>Mapa</span></button>
+  <button data-tab="buses">🚌<span>Autobusy</span></button>
+  <button data-tab="feed">📋<span>Aktywność</span></button>
+  <button data-tab="settings">⚙️<span>Ustawienia</span></button>
+</nav>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
