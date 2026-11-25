@@ -24,6 +24,23 @@ setTheme(store.get('theme', 'osm'));
 const repLayer = L.layerGroup().addTo(map), busLayer = L.layerGroup().addTo(map);
 let meMarker, myPos = null, reports = [], buses = [];
 
+// ---- linie i przystanki ----
+const LINES = ['1','3','5','7','8','9','10','11','12','13','14','15','16','17','18','21','25','28','30','80','N1','N2','SZ1','SZ2','SZ4','SZ10','SZ20'];
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let lineFilter = '', stops = [], stopsHaveLines = false, stopsMsg = 'Przystanki: ładowanie…';
+const passLine = (r) => !lineFilter || r.route === lineFilter;
+function chips(box, search, selected, pick) {
+  const draw = () => {
+    const q = search.value.trim().toUpperCase();
+    box.innerHTML = LINES.filter((l) => l.includes(q)).map((l) =>
+      `<button type="button" class="chip${selected() === l ? ' on' : ''}" data-l="${l}">${l}</button>`).join('') || '<span class="muted">Brak takiej linii</span>';
+  };
+  search.oninput = draw;
+  box.onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; pick(selected() === b.dataset.l ? '' : b.dataset.l); draw(); };
+  draw(); return draw;
+}
+
+
 // ---- вкладки ----
 document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
   document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
@@ -56,9 +73,9 @@ window.vote = async (id, kind) => {
 let prevIds = new Set();
 function renderReports() {
   repLayer.clearLayers();
-  reports.forEach((r) => L.marker([r.lat, r.lon], { icon: L.divIcon({ className: '',
+  reports.filter(passLine).forEach((r) => L.marker([r.lat, r.lon], { icon: L.divIcon({ className: '',
     html: `<div class="kmark ${r.freshness}">🚨</div>`, iconSize: [38, 38] }) }).bindPopup(popup(r)).addTo(repLayer));
-  $('#feedList').innerHTML = [...reports].sort((a, b) => b.createdAt - a.createdAt).map((r) =>
+  $('#feedList').innerHTML = reports.filter(passLine).sort((a, b) => b.createdAt - a.createdAt).map((r) =>
     `<div class="card"><div><b>Kontrolerów: ${r.count}</b> ${r.route ? `<span class="badge">${r.route}</span>` : ''}
      <div class="muted">${FRESH[r.freshness]} · ${ago(r.lastConfirmedAt)} · 👍${r.confirms} 👎${r.denies}</div></div>
      <button class="btn ghost" onclick="showOn(${r.lat},${r.lon})">Na mapie</button></div>`).join('')
@@ -94,7 +111,7 @@ $('#send').onclick = async () => {
 // ---- автобусы (только реальный источник) ----
 let busState = { ok: false, msg: 'Ładowanie autobusów…' };
 function renderBusStatus() {
-  const el = $('#busStatus'); el.className = 'pill ' + (busState.ok ? 'ok' : 'bad'); el.textContent = busState.msg;
+  const el = $('#busStatus'); el.className = 'pill ' + (busState.ok ? 'ok' : 'bad'); el.textContent = busState.msg + ' · ' + stopsMsg;
 }
 async function loadBuses() {
   try {
@@ -118,6 +135,38 @@ $('#setNotify').onchange = async (e) => {
   else if (e.target.checked) { alert('Przeglądarka nie obsługuje powiadomień.'); e.target.checked = false; }
   store.set('notify', e.target.checked);
 };
+
+// ---- wybór linii (formularz + filtr mapy) ----
+const drawForm = chips($('#routeChips'), $('#routeSearch'), () => $('#route').value, (v) => { $('#route').value = v; });
+$('#report').addEventListener('click', drawForm);
+$('#send').addEventListener('click', () => setTimeout(drawForm, 500));
+const stopLayer = L.layerGroup(), stopRenderer = L.canvas({ padding: 0.5 });
+function renderStops() {
+  stopLayer.clearLayers();
+  if (map.getZoom() < 14) { if (map.hasLayer(stopLayer)) map.removeLayer(stopLayer); return; }
+  if (!map.hasLayer(stopLayer)) stopLayer.addTo(map);
+  const b = map.getBounds().pad(0.2);
+  stops.filter((s) => b.contains([s.lat, s.lon]) && (!lineFilter || !stopsHaveLines || s.lines.includes(lineFilter))).forEach((s) =>
+    L.circleMarker([s.lat, s.lon], { renderer: stopRenderer, radius: 5, weight: 2, color: '#fff', fillColor: '#2f7de1', fillOpacity: 1 })
+      .bindPopup(`<b>${esc(s.name)}</b>${s.lines.length ? '<br>Linie: ' + s.lines.map(esc).join(', ') : ''}`).addTo(stopLayer));
+}
+map.on('moveend zoomend', renderStops);
+const drawFilter = chips($('#lineChips'), $('#lineSearch'), () => lineFilter, (v) => {
+  lineFilter = v; $('#lineBtn').classList.toggle('on', !!v); renderReports(); renderStops();
+  $('#lineNote').textContent = v ? `Pokazuję tylko linię ${v}.` + (stopsHaveLines ? '' : ' Brak danych o liniach na przystankach — przystanki nie są filtrowane.') : 'Wybierz linię, aby pokazać tylko jej zgłoszenia i przystanki.';
+});
+$('#lineBtn').onclick = () => { $('#linePanel').hidden = !$('#linePanel').hidden; drawFilter(); };
+let stopsTries = 0;
+async function loadStops() {
+  try {
+    const j = await (await fetch('/api/stops')).json();
+    stops = j.stops || []; stopsHaveLines = stops.some((s) => s.lines.length);
+    stopsMsg = stops.length ? `Przystanki: ${stops.length}` : (j.status === 'error' ? 'Przystanki: błąd pobierania danych' : 'Przystanki: ładowanie…');
+    renderStops(); if (!pickMode) renderBusStatus();
+    if (!stops.length && j.status !== 'error' && ++stopsTries < 20) setTimeout(loadStops, 15000);
+  } catch { stopsMsg = 'Przystanki: brak połączenia'; renderBusStatus(); }
+}
+loadStops();
 
 // ---- офлайн + PWA ----
 const off = () => $('#offline').hidden = navigator.onLine;

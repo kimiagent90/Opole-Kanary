@@ -23,6 +23,12 @@
   <section id="tab-map" class="tab active"><div id="map"></div>
     <div id="busStatus" class="pill"></div>
     <button id="locate" class="fab small" aria-label="Moja lokalizacja">◎</button>
+    <button id="lineBtn" class="fab small" style="bottom:140px" aria-label="Filtr linii">🚌</button>
+    <div id="linePanel" class="linepanel" hidden>
+      <input id="lineSearch" type="search" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
+      <div id="lineChips" class="chips"></div>
+      <p class="muted" id="lineNote">Wybierz linię, aby pokazać tylko jej zgłoszenia i przystanki.</p>
+    </div>
     <button id="report" class="fab">🚨 Widzę kontrolera</button>
   </section>
 
@@ -55,7 +61,10 @@
     <label>Liczba kontrolerów
       <div class="stepper"><button id="minus" aria-label="Mniej">−</button><span id="cnt">1</span><button id="plus" aria-label="Więcej">+</button></div></label>
     <label>Środek transportu <select id="transport"><option>Autobus</option></select></label>
-    <label>Numer linii (opcjonalnie) <input id="route" maxlength="4" inputmode="text" placeholder="np. 12"></label>
+    <label>Linia (opcjonalnie)</label>
+    <input id="routeSearch" type="search" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
+    <div id="routeChips" class="chips"></div>
+    <input id="route" type="hidden">
     <div class="actions"><button id="cancel" class="btn ghost">Anuluj</button><button id="send" class="btn">Wyślij</button></div>
     <p id="err" class="err"></p>
   </div>

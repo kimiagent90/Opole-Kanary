@@ -4,6 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { LINES, createStore } = require('./stops.js');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
@@ -26,6 +27,8 @@ fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 let reports = [];
 try { reports = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch {}
 const save = () => fs.writeFile(DB_FILE, JSON.stringify(reports), () => {});
+const stopsStore = createStore(path.join(__dirname, 'data', 'stops.json'),
+  `${OPOLE.latMin},${OPOLE.lonMin},${OPOLE.latMax},${OPOLE.lonMax}`);
 const lastByClient = new Map();
 const clients = new Set();
 
@@ -69,7 +72,8 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const lat = Number(b.lat), lon = Number(b.lon);
     const count = Math.min(10, Math.max(1, parseInt(b.count) || 1));
-    const route = String(b.route || '').trim().slice(0, 4).replace(/[^\w]/g, '');
+    const route = String(b.route || '').trim().slice(0, 4).replace(/[^\w]/g, '').toUpperCase();
+    if (route && !LINES.includes(route)) return json(res, 400, { error: 'Nieznana linia' });
     if (!(lat > OPOLE.latMin && lat < OPOLE.latMax && lon > OPOLE.lonMin && lon < OPOLE.lonMax))
       return json(res, 400, { error: 'Miejsce poza Opolem' });
     const cid = clientId(req);
@@ -108,6 +112,13 @@ async function api(req, res, url) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
     res.write(`data: ${JSON.stringify(active())}\n\n`);
     clients.add(res); req.on('close', () => clients.delete(res)); return;
+  }
+
+  if (url.pathname === '/api/lines') return json(res, 200, LINES);
+  if (url.pathname === '/api/stops') {
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    return json(res, 200, { status: stopsStore.status, updatedAt: stopsStore.updatedAt, matched: stopsStore.matched, note: stopsStore.note,
+      stops: stopsStore.stops.map(({ id, name, lat, lon, lines }) => ({ id, name, lat, lon, lines })) });
   }
 
   if (url.pathname === '/api/buses') {
