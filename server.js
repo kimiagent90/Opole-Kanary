@@ -72,6 +72,7 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const lat = Number(b.lat), lon = Number(b.lon);
     const count = Math.min(10, Math.max(1, parseInt(b.count) || 1));
+    const comment = String(b.comment || '').replace(/https?:\/\/\S+/gi, '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
     const route = String(b.route || '').trim().slice(0, 4).replace(/[^\w]/g, '').toUpperCase();
     if (route && !LINES.includes(route)) return json(res, 400, { error: 'Nieznana linia' });
     if (!(lat > OPOLE.latMin && lat < OPOLE.latMax && lon > OPOLE.lonMin && lon < OPOLE.lonMax))
@@ -85,11 +86,12 @@ async function api(req, res, url) {
     const dup = reports.find((r) => alive(r) && dist(r.lat, r.lon, lat, lon) < DUP_RADIUS_M && (!route || !r.route || r.route === route));
     if (dup) {
       dup.lastConfirmedAt = now(); dup.confirms++; dup.count = Math.max(dup.count, count);
+      if (comment) dup.comment = comment;
       if (route && !dup.route) dup.route = route;
       save(); broadcast();
       return json(res, 200, { merged: true, report: view(dup) });
     }
-    const r = { id: crypto.randomUUID(), lat, lon, count, route, transport: 'bus',
+    const r = { id: crypto.randomUUID(), lat, lon, count, route, comment, transport: 'bus',
       createdAt: now(), lastConfirmedAt: now(), confirms: 1, denies: 0, voters: [cid] };
     reports.push(r); save(); broadcast();
     return json(res, 201, { merged: false, report: view(r) });

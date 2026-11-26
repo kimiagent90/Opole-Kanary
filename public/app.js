@@ -81,7 +81,7 @@ const GLYPH = '<g transform="translate(0 -2) translate(24 22.5) scale(1.2) trans
 const markerHTML = (r, k) => `<div class="sm${k.fresh ? ' fresh' : ''}" style="--c:${k.c};--l:${k.l};--o:${k.o};--g:${k.g}">${k.fresh ? '<i class="ping"></i>' : ''}` +
   `<svg viewBox="0 0 48 60" aria-hidden="true"><path class="pin" d="M24 58C24 58 4 36 4 22a20 20 0 1 1 40 0c0 14-20 36-20 36z"/>` +
   `<circle cx="24" cy="22" r="16.5" fill="#0a1430" stroke="rgba(255,255,255,.2)"/>${GLYPH}</svg><b class="cnt">${r.count}</b></div>`;
-const popup = (r) => { const k = tone(r); return `<div class="pp"><div class="pp-h"><span class="dot" style="background:${k.c}"></span><b>Kontrolerów: ${r.count}</b>${r.route ? ` <span class="badge">${esc(r.route)}</span>` : ''}</div>
+const popup = (r) => { const k = tone(r); return `<div class="pp"><div class="pp-h"><span class="dot" style="background:${k.c}"></span><b>Kontrolerów: ${r.count}</b>${r.route ? ` <span class="badge">Linia ${esc(r.route)}</span>` : ''}</div>${r.comment ? `<div class="pp-c">${esc(r.comment)}</div>` : ''}
   <div class="muted">${freshTxt(k.m)} · potwierdzono ${agoTxt(k.m)}</div>
   <div class="muted">Potwierdzenia: ${r.confirms} · Zaprzeczenia: ${r.denies}</div>
   <div class="pp-a"><button class="btn sm" onclick="vote('${esc(r.id)}','confirm')">Nadal tu są</button>
@@ -102,13 +102,13 @@ function renderReports() {
     const k = tone(r);
     const icon = L.divIcon({ className: '', html: markerHTML(r, k), iconSize: [44, 55], iconAnchor: [22, 55], popupAnchor: [0, -50] });
     let m = marks.get(r.id);
-    if (!m) { m = L.marker([r.lat, r.lon], { icon }).bindPopup(() => popup(byId.get(r.id) || r)); marks.set(r.id, m); m.addTo(repLayer); }
+    if (!m) { m = L.marker([r.lat, r.lon], { icon }).bindPopup(() => popup(byId.get(r.id) || r), { minWidth: 250, maxWidth: 300 }); marks.set(r.id, m); m.addTo(repLayer); }
     else { m.setIcon(icon); if (m.isPopupOpen()) m.getPopup().setContent(popup(r)); }
     m.setZIndexOffset(Math.round((1 - k.t) * 1000));
   });
   $('#feedList').innerHTML = list.sort((a, b) => b.createdAt - a.createdAt).map((r) => { const k = tone(r); return `<div class="card"><div>
-    <span class="dot" style="background:${k.c}"></span> <b>Kontrolerów: ${r.count}</b> ${r.route ? `<span class="badge">${esc(r.route)}</span>` : ''}
-    <div class="muted">${freshTxt(k.m)} · ${agoTxt(k.m)}</div></div>
+    <span class="dot" style="background:${k.c}"></span> <b>Kontrolerów: ${r.count}</b> ${r.route ? `<span class="badge">Linia ${esc(r.route)}</span>` : ''}
+    ${r.comment ? `<div class="cm">${esc(r.comment)}</div>` : ''}<div class="muted">${freshTxt(k.m)} · ${agoTxt(k.m)}</div></div>
     <button class="btn ghost sm" onclick="showOn(${r.lat},${r.lon})">Na mapie</button></div>`; }).join('')
     || '<p class="muted">Brak aktywnych zgłoszeń.</p>';
   if (prevIds.size && store.get('notify', false) && 'Notification' in window && Notification.permission === 'granted')
@@ -135,12 +135,15 @@ $('#plus').onclick = () => $('#cnt').textContent = count = Math.min(10, count + 
 $('#minus').onclick = () => $('#cnt').textContent = count = Math.max(1, count - 1);
 $('#send').onclick = async () => {
   const p = picked || myPos; if (!p) { $('#err').textContent = 'Wskaż miejsce na mapie'; return; }
-  const r = await fetch('/api/reports', { method: 'POST', headers: H, body: JSON.stringify({ lat: p[0], lon: p[1], count, route: $('#route').value }) });
+  const r = await fetch('/api/reports', { method: 'POST', headers: H, body: JSON.stringify({ lat: p[0], lon: p[1], count, route: $('#route').value, comment: $('#comment').value }) });
   const j = await r.json();
   if (!r.ok) { $('#err').textContent = j.error; return; }
-  $('#sheet').hidden = true; $('#route').value = ''; picked = null; count = 1; $('#cnt').textContent = 1; map.flyTo(p, 16);
+  $('#sheet').hidden = true; $('#route').value = ''; $('#comment').value = ''; picked = null; count = 1; $('#cnt').textContent = 1; map.flyTo(p, 16);
   toast(j.merged ? 'Obok jest już takie zgłoszenie — potwierdziliśmy je.' : 'Zgłoszenie dodane. Dziękujemy!');
 };
+
+$('#quick').onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; const i = $('#comment'), v = i.value.trim();
+  i.value = (v ? v + ', ' + b.textContent.toLowerCase() : b.textContent).slice(0, 140); };
 
 // ---- ustawienia ----
 $('#setTheme').value = store.get('theme', 'osm');

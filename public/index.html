@@ -25,7 +25,6 @@
 
 <main>
   <section id="tab-map" class="tab active"><div id="map"></div>
-    <img class="brand" src="/icon-64.png" alt="Kanary Opole" width="46" height="46">
     <button id="lineBtn" class="glass" aria-label="Filtr linii"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button>
     <button id="locate" class="glass" aria-label="Moja lokalizacja"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></button>
     <div id="linePanel" class="linepanel" hidden>
@@ -80,6 +79,9 @@
     <input id="routeSearch" type="search" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
     <div id="routeChips" class="chips"></div>
     <input id="route" type="hidden">
+    <label for="comment">Komentarz (opcjonalnie)</label>
+    <input id="comment" type="text" maxlength="140" placeholder="np. w stronę Dworca Głównego" autocomplete="off">
+    <div class="qc" id="quick"><button type="button" class="chip">W stronę centrum</button><button type="button" class="chip">Od centrum</button><button type="button" class="chip">Na przystanku</button><button type="button" class="chip">W autobusie</button><button type="button" class="chip">Wysiadają</button></div>
     <div class="actions"><button id="cancel" class="btn ghost">Anuluj</button><button id="send" class="btn danger">Wyślij</button></div>
     <p id="err" class="err"></p>
   </div>
