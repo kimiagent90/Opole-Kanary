@@ -26,3 +26,8 @@
 ## Railway
 Uruchomienie: `npm start` (serwer czyta `PORT` ze zmiennej środowiskowej). Dane zgłoszeń są w `data/reports.json`;
 na Railway dołącz Volume zamontowany w `/app/data`, inaczej zgłoszenia znikną po redeployu.
+
+## Wygląd i instrukcja
+- Ikona PWA pochodzi z dostarczonego obrazu (`public/icon-*.png`, w tym wariant maskable dla Androida).
+- Znaczek zgłoszenia (syrena) płynnie zmienia kolor z czerwonego na szary przez 3 godziny (`TTL_MIN` w `server.js` i `app.js`).
+- Zakładka „Instrukcja” zawiera ilustrowane kroki dodania aplikacji do ekranu głównego (iPhone/Safari, Android/Chrome) — po polsku.

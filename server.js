@@ -9,7 +9,7 @@ const { LINES, createStore } = require('./stops.js');
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
 const DB_FILE = path.join(__dirname, 'data', 'reports.json');
-const TTL_MIN = 45;            // отметка исчезает через 45 мин без подтверждений
+const TTL_MIN = 180;           // znaczek szarzeje stopniowo i znika po 3 h bez potwierdzeń (musi zgadzać się z app.js)
 const RATE_LIMIT_MS = 60_000;  // не чаще 1 отметки в минуту с одного клиента
 const DUP_RADIUS_M = 150;      // повтор рядом => считается подтверждением
 const OPOLE = { latMin: 50.55, latMax: 50.78, lonMin: 17.78, lonMax: 18.08 };
