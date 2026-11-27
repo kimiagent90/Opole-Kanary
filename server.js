@@ -1,6 +1,7 @@
 // Kanary Opole — serwer: statyka, API (zgłoszenia, czat, pomysły), panel admina, SSE, baza danych.
 'use strict';
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -77,6 +78,51 @@ const activeReports = async () => (await db.all('SELECT * FROM reports WHERE sta
 const pushReports = async () => { if (sse.size) sseSend('reports', await activeReports()); };
 setInterval(() => pushReports().catch(() => {}), 30_000).unref();
 
+
+// ---------- Web Push (VAPID, powiadomienie bez ładunku: SW pobiera treść z /api/push/peek) ----------
+let VAPID = null;
+async function initVapid() {
+  let v = null; try { v = JSON.parse(await db.getSetting('vapid') || 'null'); } catch {}
+  if (!v) { const jwk = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ format: 'jwk' }); v = { d: jwk.d, x: jwk.x, y: jwk.y }; await db.setSetting('vapid', JSON.stringify(v)); }
+  VAPID = { priv: crypto.createPrivateKey({ key: { kty: 'EC', crv: 'P-256', ...v }, format: 'jwk' }),
+    pub: Buffer.concat([Buffer.from([4]), Buffer.from(v.x, 'base64url'), Buffer.from(v.y, 'base64url')]).toString('base64url') };
+}
+const PUSH_HOSTS = /(^|\.)(googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/;
+const pushOk = (ep) => { try { const u = new URL(ep); return process.env.PUSH_ALLOW_HTTP === '1' || (u.protocol === 'https:' && PUSH_HOSTS.test(u.hostname)); } catch { return false; } };
+function vapidHeader(ep) {
+  const h = b64(JSON.stringify({ typ: 'JWT', alg: 'ES256' })),
+    p = b64(JSON.stringify({ aud: new URL(ep).origin, exp: Math.floor(now() / 1000) + 12 * 3600, sub: 'mailto:' + (process.env.VAPID_CONTACT || 'admin@kanary-opole.onrender.com') }));
+  const sig = crypto.sign('sha256', Buffer.from(h + '.' + p), { key: VAPID.priv, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+  return `vapid t=${h}.${p}.${sig}, k=${VAPID.pub}`;
+}
+const sendPush = (ep) => new Promise((resolve) => {
+  try {
+    const u = new URL(ep);
+    const rq = (u.protocol === 'http:' ? http : https).request(u, { method: 'POST', timeout: 10000,
+      headers: { Authorization: vapidHeader(ep), TTL: '900', Urgency: 'high', 'Content-Length': '0' } }, (r) => { r.resume(); resolve(r.statusCode); });
+    rq.on('error', () => resolve(0)); rq.on('timeout', () => { rq.destroy(); resolve(0); }); rq.end();
+  } catch { resolve(0); }
+});
+async function notifyNear(r) { // r: wiersz z tabeli reports
+  if (!VAPID) return;
+  const subs = await db.all('SELECT s.*, COALESCE(c.blocked,0) AS bl FROM push_subs s LEFT JOIN clients c ON c.id=s.client_id WHERE s.fails<5');
+  const t = now(), todo = [];
+  for (const s of subs) {
+    if (s.bl || s.client_id === r.client_id || t - s.last_sent < 180_000) continue;
+    const d = s.has_pos ? dist(s.lat, s.lon, r.lat, r.lon) : Infinity;
+    const byLine = !!r.route && s.lines.split(',').includes(r.route), byDist = s.radius > 0 && d <= s.radius;
+    if (!byLine && !byDist) continue;
+    todo.push({ s, msg: JSON.stringify({ id: r.id, count: r.cnt, route: r.route, comment: r.comment, lat: r.lat, lon: r.lon, near: byDist ? Math.round(d) : null }) });
+  }
+  await Promise.all(todo.map(async ({ s, msg }) => {
+    await db.run('UPDATE push_subs SET pending=$1, last_sent=$2 WHERE endpoint=$3', [msg, t, s.endpoint]);
+    const code = await sendPush(s.endpoint);
+    if (code === 404 || code === 410) await db.run('DELETE FROM push_subs WHERE endpoint=$1', [s.endpoint]);
+    else if (code === 0 || code >= 400) await db.run('UPDATE push_subs SET fails=fails+1 WHERE endpoint=$1', [s.endpoint]);
+    else await db.run('UPDATE push_subs SET fails=0 WHERE endpoint=$1', [s.endpoint]);
+  }));
+}
+
 // ---------- przystanki ----------
 const stopsStore = createStore(path.join(__dirname, 'data', 'stops.json'),
   `${OPOLE.latMin},${OPOLE.lonMin},${OPOLE.latMax},${OPOLE.lonMax}`);
@@ -149,7 +195,9 @@ async function api(req, res, url) {
     await db.run("INSERT INTO votes(report_id,client_id,kind) VALUES($1,$2,'confirm') ON CONFLICT DO NOTHING", [id, cid]);
     await db.run('UPDATE clients SET reports_count=reports_count+1 WHERE id=$1', [cid]);
     await pushReports();
-    return send(res, 201, { merged: false, report: rv(await db.get('SELECT * FROM reports WHERE id=$1', [id])) });
+    const fresh = await db.get('SELECT * FROM reports WHERE id=$1', [id]);
+    notifyNear(fresh).catch((e) => console.error('push:', e.message));
+    return send(res, 201, { merged: false, report: rv(fresh) });
   }
 
   const vm = p.match(/^\/api\/reports\/([\w-]+)\/(confirm|deny)$/);
@@ -168,6 +216,34 @@ async function api(req, res, url) {
     }
     await pushReports();
     return send(res, 200, { ok: true });
+  }
+
+
+  // ---- push ----
+  if (p === '/api/push/key') return send(res, 200, { key: VAPID ? VAPID.pub : '' });
+  if (p === '/api/push/sub' && m === 'POST') {
+    const cid = await guard(req, res); if (!cid) return;
+    const b = await readBody(req), ep = String(b.endpoint || '');
+    if (!pushOk(ep) || ep.length > 600) return send(res, 400, { error: 'bad_endpoint' });
+    const w = limited('psub:' + cid, 30, 3600_000); if (w) return send(res, 429, { error: 'rate_limit', retry: w });
+    const lat = Number(b.lat), lon = Number(b.lon), has = lat > OPOLE.latMin - 0.2 && lat < OPOLE.latMax + 0.2 && lon > OPOLE.lonMin - 0.3 && lon < OPOLE.lonMax + 0.3 ? 1 : 0;
+    const radius = [0, 500, 1000, 2000, 5000].includes(Number(b.radius)) ? Number(b.radius) : 0;
+    const lines = (Array.isArray(b.lines) ? b.lines : []).map(String).filter((l) => LINES.includes(l)).slice(0, 40).join(',');
+    await db.run(`INSERT INTO push_subs(endpoint,client_id,lat,lon,has_pos,radius,lines,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT (endpoint) DO UPDATE SET client_id=$2, lat=CASE WHEN $5=1 THEN $3 ELSE push_subs.lat END, lon=CASE WHEN $5=1 THEN $4 ELSE push_subs.lon END,
+      has_pos=CASE WHEN $5=1 THEN 1 ELSE push_subs.has_pos END, radius=$6, lines=$7, fails=0`, [ep, cid, has ? lat : 0, has ? lon : 0, has, radius, lines, now()]);
+    return send(res, 200, { ok: true });
+  }
+  if (p === '/api/push/unsub' && m === 'POST') {
+    const cid = await guard(req, res); if (!cid) return; const b = await readBody(req);
+    await db.run('DELETE FROM push_subs WHERE endpoint=$1 AND client_id=$2', [String(b.endpoint || ''), cid]);
+    return send(res, 200, { ok: true });
+  }
+  if (p === '/api/push/peek' && m === 'POST') {
+    const w = limited('peek:' + ipHashOf(req), 60, 60_000); if (w) return send(res, 429, { error: 'rate_limit' });
+    const b = await readBody(req), row = await db.get('SELECT pending FROM push_subs WHERE endpoint=$1', [String(b.endpoint || '')]);
+    let j = {}; try { j = JSON.parse((row && row.pending) || '{}'); } catch {}
+    return send(res, 200, j);
   }
 
   // ---- czat ----
@@ -240,6 +316,7 @@ async function admin(req, res, url) {
       total: await cnt('SELECT COUNT(*) AS c FROM clients WHERE is_bot=0'),
       pwa: await cnt('SELECT COUNT(*) AS c FROM clients WHERE is_bot=0 AND standalone=1'),
       blocked: await cnt('SELECT COUNT(*) AS c FROM clients WHERE blocked=1'),
+      push: await cnt('SELECT COUNT(*) AS c FROM push_subs'),
       reportsActive: await cnt('SELECT COUNT(*) AS c FROM reports WHERE status=0 AND last_confirmed_at>$1', [cutoff()]),
       reportsToday: rep[today] || 0,
       messagesToday: msgs.filter((x) => warsawDay(x.created_at) === today).length,
@@ -313,6 +390,7 @@ async function dailyTick() {
   await db.setSetting('reset_day', day);
   const t = now();
   await db.run('DELETE FROM reports WHERE created_at<$1', [t - 30 * 86400_000]);
+  await db.run('DELETE FROM push_subs WHERE fails>=5');
   await db.run('DELETE FROM votes WHERE report_id NOT IN (SELECT id FROM reports)');
   await db.run('DELETE FROM messages WHERE created_at<$1', [t - 7 * 86400_000]);
   await db.run('DELETE FROM daily_users WHERE day<$1', [warsawDay(t - 120 * 86400_000)]);
@@ -352,6 +430,7 @@ const server = http.createServer(async (req, res) => {
 (async () => {
   const kind = await db.init();
   console.log(`DB: ${kind}${kind === 'sqlite' ? ' (lokalnie, bez trwałości na hostingu!)' : ''}; admin: ${ADMIN_USER && ADMIN_PASS ? 'włączony' : 'WYŁĄCZONY (brak ADMIN_USER/ADMIN_PASS)'}`);
+  await initVapid().catch((e) => console.error('vapid:', e.message));
   await dailyTick().catch((e) => console.error('dailyTick:', e.message));
   setInterval(() => dailyTick().catch((e) => console.error('dailyTick:', e.message)), 30_000).unref();
   server.listen(PORT, () => console.log(`Kanary Opole: http://localhost:${PORT}`));

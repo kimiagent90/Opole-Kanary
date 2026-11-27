@@ -33,6 +33,10 @@ const SCHEMA = [
     id TEXT PRIMARY KEY, kind TEXT NOT NULL, text TEXT NOT NULL, contact TEXT NOT NULL DEFAULT '',
     client_id TEXT NOT NULL, created_at BIGINT NOT NULL, status TEXT NOT NULL DEFAULT 'new')`,
   `CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint TEXT PRIMARY KEY, client_id TEXT NOT NULL, lat DOUBLE PRECISION NOT NULL DEFAULT 0, lon DOUBLE PRECISION NOT NULL DEFAULT 0,
+    has_pos INTEGER NOT NULL DEFAULT 0, radius INTEGER NOT NULL DEFAULT 0, lines TEXT NOT NULL DEFAULT '',
+    created_at BIGINT NOT NULL, last_sent BIGINT NOT NULL DEFAULT 0, fails INTEGER NOT NULL DEFAULT 0, pending TEXT NOT NULL DEFAULT '')`,
 ];
 
 const toLite = (sql) => sql.replace(/\$(\d+)/g, '?$1');

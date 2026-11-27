@@ -70,7 +70,7 @@ async function loadStats() {
   const r = await api('/stats'); if (!r.ok) return; const s = r.j;
   $('#liveOnline').textContent = s.online; $('#nFeedback').textContent = s.feedbackNew || ''; $('#nReports').textContent = s.reportsActive || '';
   $('#dbinfo').textContent = 'БД: ' + (s.db === 'pg' ? 'PostgreSQL' : 'SQLite (временная!)');
-  $('#kpis').innerHTML = kpi(s.online, 'Сейчас онлайн', 'big', 'настоящие пользователи, без ботов') + kpi(s.today, 'Уникальных сегодня', 'big') + kpi(s.total, 'Всего пользователей') + kpi(s.pwa, 'Установили PWA') +
+  $('#kpis').innerHTML = kpi(s.online, 'Сейчас онлайн', 'big', 'настоящие пользователи, без ботов') + kpi(s.today, 'Уникальных сегодня', 'big') + kpi(s.total, 'Всего пользователей') + kpi(s.pwa, 'Установили PWA') + kpi(s.push, 'Push-подписчиков') +
     kpi(s.reportsActive, 'Меток на карте') + kpi(s.reportsToday, 'Меток сегодня') + kpi(s.messagesToday, 'Сообщений сегодня') +
     kpi(s.feedbackNew, 'Новых обращений', s.feedbackNew ? 'warn' : '') + kpi(s.blocked, 'Заблокировано', s.blocked ? 'red' : '');
   $('#chUsers').innerHTML = bars(s.series.users, s.series.days); $('#chReports').innerHTML = bars(s.series.reports, s.series.days);

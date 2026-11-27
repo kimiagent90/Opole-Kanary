@@ -194,3 +194,27 @@ body[data-map=dark] #map{background:#0b1530}
 textarea{width:100%;background:#071236;color:var(--tx);border:1px solid var(--line);border-radius:14px;padding:12px;font:16px/1.4 var(--ui);resize:vertical}
 .btn:disabled{opacity:.55}
 .leaflet-container{font-family:var(--ui)}
+
+/* ---------- v3: MapLibre, 3D, push ---------- */
+#tiltBtn{top:calc(228px + var(--safe-t))}
+#tiltBtn[hidden]{display:none}
+.maperr{position:absolute;inset:0;z-index:870;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:rgba(5,13,36,.92)}
+.maperr[hidden]{display:none}
+.mlm{width:44px;height:55px;cursor:pointer}
+.maplibregl-map{font-family:var(--ui)}
+.maplibregl-ctrl-group{border-radius:14px!important;overflow:hidden;background:rgba(7,18,48,.88)!important;box-shadow:0 6px 18px rgba(0,0,0,.3)!important;backdrop-filter:blur(10px)}
+.maplibregl-ctrl-group button{width:40px!important;height:40px!important;border-color:var(--line)!important}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:invert(1) brightness(1.4)}
+.maplibregl-ctrl-bottom-left{margin-bottom:6px}
+@media (pointer:coarse){.maplibregl-ctrl-zoom-in,.maplibregl-ctrl-zoom-out{display:none!important}}
+.maplibregl-ctrl-attrib{font-size:9px!important}
+.maplibregl-popup-content{background:var(--panel)!important;color:var(--tx);border:1px solid var(--line);border-radius:16px!important;box-shadow:0 12px 30px rgba(0,0,0,.5)!important;padding:12px 14px!important;font-family:var(--ui)}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{border-top-color:var(--panel)!important}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip{border-bottom-color:var(--panel)!important}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip{border-right-color:var(--panel)!important}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip{border-left-color:var(--panel)!important}
+.maplibregl-popup-close-button{color:var(--tx)}
+.me{box-sizing:content-box}
+.rl{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rl select{max-width:55%}
+#pushBox .chips{max-height:116px}

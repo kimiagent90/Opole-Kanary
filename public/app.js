@@ -36,26 +36,19 @@ async function hb() {
 hb(); setInterval(hb, 45000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) hb(); });
 
-// ---- mapa ----
-const MAXB = L.latLngBounds([50.45, 17.65], [50.9, 18.25]);
-const map = L.map('map', { zoomControl: false, zoomSnap: 0.5, zoomDelta: 1, minZoom: 10, maxZoom: 19, maxBounds: MAXB, maxBoundsViscosity: 0.7, wheelPxPerZoomLevel: 90, fadeAnimation: true }).setView(OPOLE, 13);
-L.control.zoom({ position: 'bottomleft' }).addTo(map);
-let tiles;
-const TILES = {
-  voyager: ['https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', '© OpenStreetMap © CARTO'],
-  osm: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png', '© OpenStreetMap'],
-  light: ['https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', '© OpenStreetMap © CARTO'],
-  dark: ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', '© OpenStreetMap © CARTO'],
-};
-const setTheme = (k) => {
-  if (tiles) map.removeLayer(tiles);
-  const [url, attribution] = TILES[k] || TILES.voyager;
-  tiles = L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd', attribution, keepBuffer: 4, updateWhenIdle: false }).addTo(map);
-  document.body.dataset.map = k;
-};
-setTheme(store.get('theme2', 'voyager'));
-const repLayer = L.layerGroup().addTo(map);
-let meMarker, myPos = null, reports = [], loaded = false;
+// ---- mapa (silnik: MapLibre albo Leaflet; tworzony asynchronicznie) ----
+let engine = null, myPos = null, reports = [], loaded = false;
+const stopHtml = (s) => `<b>${esc(s.name)}</b>${s.lines && s.lines.length ? '<br>' + esc(t('stop_lines', { l: s.lines.join(', ') })) : ''}`;
+let pickMode = false;
+MapEngine.create({ theme: store.get('theme3', 'liberty'), isPicking: () => pickMode, stopHtml }).then((e) => {
+  engine = e;
+  e.onClick((la, lo) => { if (!pickMode) return; setPick(false); picked = [la, lo]; open(); });
+  $('#tiltBtn').hidden = !e.canTilt;
+  if (myPos) e.setMe(myPos[0], myPos[1]);
+  renderReports(); if (stops.length) { e.setStops(stops, stopsHaveLines); e.setStopLine(lineFilter); }
+  const q = new URLSearchParams(location.search).get('r'); if (q) { const [la, lo] = q.split(',').map(Number); if (la && lo) e.flyTo(la, lo, 17); history.replaceState(null, '', '/'); }
+}).catch(() => { $('#mapErr').hidden = false; });
+$('#tiltBtn').onclick = () => { if (engine) $('#tiltBtn').classList.toggle('on', engine.tilt()); };
 
 // ---- linie i przystanki ----
 const LINES = ['1','3','5','7','8','9','10','11','12','13','14','15','16','17','18','21','25','28','30','80','N1','N2','SZ1','SZ2','SZ4','SZ10','SZ20'];
@@ -78,7 +71,7 @@ function gotoTab(n) {
   curTab = n;
   document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x.dataset.tab === n));
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x.id === 'tab-' + n));
-  if (n === 'map') setTimeout(() => map.invalidateSize(), 50);
+  if (n === 'map') setTimeout(() => engine && engine.resize(), 50);
   if (n === 'chat') { unread = 0; badge(); setTimeout(() => { const l = $('#chatList'); l.scrollTop = l.scrollHeight; }, 30); }
 }
 document.querySelectorAll('nav button').forEach((b) => b.onclick = () => gotoTab(b.dataset.tab));
@@ -87,15 +80,16 @@ $('#listBtn').onclick = () => gotoTab('feed');
 // ---- geolokalizacja ----
 let geoKey = '';
 const geoText = () => { $('#geoState').textContent = geoKey ? t(geoKey) : '—'; };
+let lastPush = { t: 0, p: null };
 const geo = () => navigator.geolocation?.watchPosition((p) => {
   myPos = [p.coords.latitude, p.coords.longitude];
-  if (!meMarker) meMarker = L.marker(myPos, { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [16, 16] }), interactive: false, keyboard: false }).addTo(map);
-  else meMarker.setLatLng(myPos);
+  if (engine) engine.setMe(myPos[0], myPos[1]);
   geoKey = 'geo_on'; geoText();
+  if (pushCfg.on && (Date.now() - lastPush.t > 300000 || !lastPush.p || Math.hypot(myPos[0] - lastPush.p[0], myPos[1] - lastPush.p[1]) > 0.003)) { lastPush = { t: Date.now(), p: myPos }; pushSync(); }
 }, () => { geoKey = 'geo_off'; geoText(); }, { enableHighAccuracy: true, maximumAge: 5000 });
 geo();
 $('#geoAsk').onclick = geo;
-$('#locate').onclick = () => myPos ? map.flyTo(myPos, 16) : toast(t('geo_toast'));
+$('#locate').onclick = () => myPos ? engine && engine.flyTo(myPos[0], myPos[1], 16) : toast(t('geo_toast'));
 
 // ---- zgłoszenia: kolor znaczka zależy od wieku (czerwony -> szary) ----
 const ageMin = (r) => (Date.now() - r.lastConfirmedAt) / 60000;
@@ -124,30 +118,19 @@ const popup = (r) => { const k = tone(r); return `<div class="pp"><div class="pp
   <button class="btn ghost sm" onclick="vote('${esc(r.id)}','deny')">${esc(t('gone'))}</button></div></div>`; };
 window.vote = async (id, kind) => {
   const r = await api(`/api/reports/${id}/${kind}`, { method: 'POST' });
-  map.closePopup();
+  engine && engine.closePopups();
   toast(r.ok ? t('thanks') : errTxt(r.j));
 };
-const marks = new Map(), byId = new Map();
+const byId = new Map();
 let prevIds = new Set();
 function renderReports() {
   const list = reports.filter(passLine);
   byId.clear(); reports.forEach((r) => byId.set(r.id, r));
-  const ids = new Set(list.map((r) => r.id));
-  for (const [id, m] of marks) if (!ids.has(id)) { repLayer.removeLayer(m); marks.delete(id); }
-  list.forEach((r) => {
-    const k = tone(r);
-    const icon = L.divIcon({ className: '', html: markerHTML(r, k), iconSize: [44, 55], iconAnchor: [22, 55], popupAnchor: [0, -50] });
-    let m = marks.get(r.id);
-    if (!m) { m = L.marker([r.lat, r.lon], { icon }).bindPopup(() => popup(byId.get(r.id) || r), { minWidth: 250, maxWidth: 300 }); marks.set(r.id, m); m.addTo(repLayer); }
-    else { m.setIcon(icon); if (m.isPopupOpen()) m.getPopup().setContent(popup(r)); }
-    m.setZIndexOffset(Math.round((1 - k.t) * 1000));
-  });
+  if (engine) engine.syncReports(list, (r) => markerHTML(r, tone(r)), popup, (r) => Math.round((1 - tone(r).t) * 1000));
   renderFeed(list);
   // plakietka „dziś nie zauważono kontrolerów” — widoczna, dopóki mapa jest pusta
   $('#noToday').hidden = !loaded || reports.length > 0;
   const lc = $('#listCount'); lc.hidden = !reports.length; lc.textContent = reports.length;
-  if (prevIds.size && store.get('notify', false) && 'Notification' in window && Notification.permission === 'granted')
-    reports.filter((r) => !prevIds.has(r.id)).forEach((r) => new Notification('Kanary Opole', { body: t('pp_count', { n: r.count }) + (r.route ? ', ' + t('pp_line', { n: r.route }) : '') }));
   prevIds = new Set(reports.map((r) => r.id));
 }
 function renderFeed(list = reports.filter(passLine)) {
@@ -157,7 +140,7 @@ function renderFeed(list = reports.filter(passLine)) {
     <button class="btn ghost sm" onclick="showOn(${r.lat},${r.lon})">${esc(t('on_map'))}</button></div>`; }).join('')
     || `<p class="muted">${esc(t('feed_empty'))}</p>`;
 }
-window.showOn = (la, lo) => { gotoTab('map'); map.flyTo([la, lo], 17); };
+window.showOn = (la, lo) => { gotoTab('map'); engine && engine.flyTo(la, lo, 17); };
 
 // ---- strumień zdarzeń (zgłoszenia + czat) ----
 let msgs = [], unread = 0;
@@ -207,7 +190,7 @@ $('#fbSend').onclick = async () => {
 };
 
 // ---- nowe zgłoszenie ----
-let pickMode = false, picked = null, count = 1;
+let picked = null, count = 1;
 const setPick = (on) => { pickMode = on; $('#hint').hidden = !on; };
 const updatePlace = () => { const p = picked || myPos;
   $('#placeInfo').textContent = p ? t(picked ? 'place_picked' : 'place_me', { c: p[0].toFixed(5) + ', ' + p[1].toFixed(5) }) : t('place_none'); };
@@ -216,7 +199,6 @@ $('#report').onclick = () => { picked = null; open(); };
 $('#cancel').onclick = () => { $('#sheet').hidden = true; };
 $('#pickOnMap').onclick = () => { $('#sheet').hidden = true; setPick(true); };
 $('#hintCancel').onclick = () => { setPick(false); open(); };
-map.on('click', (e) => { if (!pickMode) return; setPick(false); picked = [e.latlng.lat, e.latlng.lng]; open(); });
 $('#plus').onclick = () => $('#cnt').textContent = count = Math.min(10, count + 1);
 $('#minus').onclick = () => $('#cnt').textContent = count = Math.max(1, count - 1);
 $('#send').onclick = async () => {
@@ -225,40 +207,63 @@ $('#send').onclick = async () => {
   const r = await api('/api/reports', { method: 'POST', body: JSON.stringify({ lat: p[0], lon: p[1], count, route: $('#route').value, comment: $('#comment').value }) });
   $('#send').disabled = false;
   if (!r.ok) { if (r.j.error === 'blocked') setBlocked(true); $('#err').textContent = errTxt(r.j); return; }
-  $('#sheet').hidden = true; $('#route').value = ''; $('#comment').value = ''; picked = null; count = 1; $('#cnt').textContent = 1; map.flyTo(p, 16);
+  $('#sheet').hidden = true; $('#route').value = ''; $('#comment').value = ''; picked = null; count = 1; $('#cnt').textContent = 1; engine && engine.flyTo(p[0], p[1], 16);
   toast(t(r.j.merged ? 'merged' : 'added'));
 };
 $('#quick').onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; const i = $('#comment'), v = i.value.trim();
   i.value = (v ? v + ', ' + b.textContent.toLowerCase() : b.textContent).slice(0, 140); };
 
 // ---- ustawienia ----
-$('#setTheme').value = store.get('theme2', 'voyager');
-$('#setTheme').onchange = (e) => { store.set('theme2', e.target.value); setTheme(e.target.value); };
-$('#setNotify').checked = store.get('notify', false);
-$('#setNotify').onchange = async (e) => {
-  if (e.target.checked && 'Notification' in window) { const p = await Notification.requestPermission(); e.target.checked = p === 'granted'; }
-  else if (e.target.checked) { toast(t('notif_unsupported')); e.target.checked = false; }
-  store.set('notify', e.target.checked);
-};
+$('#setTheme').value = store.get('theme3', 'liberty');
+$('#setTheme').onchange = (e) => { store.set('theme3', e.target.value); engine && engine.setTheme(e.target.value); };
+
+// ---- push ----
+const PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+let pushCfg = Object.assign({ on: false, radius: 1000, lines: [] }, store.get('push', {}));
+if (!PUSH_OK) pushCfg.on = false;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const u8 = (b) => { const r = atob((b + '='.repeat((4 - b.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+const savePush = () => store.set('push', pushCfg);
+async function pushSync() {
+  if (!pushCfg.on || !PUSH_OK) return;
+  try {
+    const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (!sub) return;
+    await api('/api/push/sub', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, lat: myPos ? myPos[0] : null, lon: myPos ? myPos[1] : null, radius: pushCfg.radius, lines: pushCfg.lines }) });
+  } catch {}
+}
+async function pushEnable() {
+  if (!PUSH_OK) { toast(t('push_unsupported')); return false; }
+  if (await Notification.requestPermission() !== 'granted') { toast(t('push_denied')); return false; }
+  try {
+    const key = (await api('/api/push/key')).j.key; if (!key) throw 0;
+    const want = u8(key), reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
+    if (sub) { const have = new Uint8Array(sub.options.applicationServerKey || []); if (have.length !== want.length || have.some((v, i) => v !== want[i])) { await sub.unsubscribe(); sub = null; } }
+    if (!sub) await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want });
+    pushCfg.on = true; savePush(); await pushSync(); toast(t('push_enabled') + (myPos || pushCfg.radius === 0 ? '' : ' ' + t('push_geo_hint'))); return true;
+  } catch { toast(t('e_generic')); return false; }
+}
+async function pushDisable() {
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+    if (sub) { await api('/api/push/unsub', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }); await sub.unsubscribe(); } } catch {}
+  pushCfg.on = false; savePush();
+}
+$('#pushOn').checked = pushCfg.on;
+$('#pushOn').onchange = async (e) => { e.target.checked = e.target.checked ? await pushEnable() : (await pushDisable(), false); };
+$('#pushRadius').value = String(pushCfg.radius);
+$('#pushRadius').onchange = (e) => { pushCfg.radius = Number(e.target.value); savePush(); pushSync(); };
+const pushLines = () => { $('#pushLines').innerHTML = LINES.map((l) => `<button type="button" class="chip${pushCfg.lines.includes(l) ? ' on' : ''}" data-l="${l}">${l}</button>`).join(''); };
+$('#pushLines').onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; const l = b.dataset.l;
+  pushCfg.lines = pushCfg.lines.includes(l) ? pushCfg.lines.filter((x) => x !== l) : [...pushCfg.lines, l]; savePush(); pushLines(); pushSync(); };
+$('#pushIos').hidden = !(isIOS && !isStandalone());
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.go) window.showOn(e.data.go[0], e.data.go[1]); });
 
 // ---- wybór linii (formularz + filtr mapy) ----
 const drawForm = chips($('#routeChips'), $('#routeSearch'), () => $('#route').value, (v) => { $('#route').value = v; });
 $('#report').addEventListener('click', drawForm);
 $('#send').addEventListener('click', () => setTimeout(drawForm, 500));
-const stopLayer = L.layerGroup(), stopRenderer = L.canvas({ padding: 0.5 });
-function renderStops() {
-  stopLayer.clearLayers();
-  if (map.getZoom() < 14) { if (map.hasLayer(stopLayer)) map.removeLayer(stopLayer); return; }
-  if (!map.hasLayer(stopLayer)) stopLayer.addTo(map);
-  const b = map.getBounds().pad(0.2);
-  stops.filter((s) => b.contains([s.lat, s.lon]) && (!lineFilter || !stopsHaveLines || s.lines.includes(lineFilter))).forEach((s) =>
-    L.circleMarker([s.lat, s.lon], { renderer: stopRenderer, radius: 5.5, weight: 2.5, color: '#fff', fillColor: '#2f6bff', fillOpacity: 1 })
-      .bindPopup(`<b>${esc(s.name)}</b>${s.lines.length ? '<br>' + esc(t('stop_lines', { l: s.lines.join(', ') })) : ''}`).addTo(stopLayer));
-}
-map.on('moveend zoomend', renderStops);
 const lineNote = () => { $('#lineNote').textContent = lineFilter ? t('line_only', { n: lineFilter }) + (stopsHaveLines ? '' : t('line_nostops')) : t('line_note'); };
 const drawFilter = chips($('#lineChips'), $('#lineSearch'), () => lineFilter, (v) => {
-  lineFilter = v; $('#lineBtn').classList.toggle('on', !!v); renderReports(); renderStops(); lineNote();
+  lineFilter = v; $('#lineBtn').classList.toggle('on', !!v); renderReports(); engine && engine.setStopLine(v); lineNote();
 });
 lineNote();
 $('#lineBtn').onclick = () => { $('#linePanel').hidden = !$('#linePanel').hidden; drawFilter(); };
@@ -267,7 +272,7 @@ async function loadStops() {
   try {
     const j = await (await fetch('/api/stops')).json();
     stops = j.stops || []; stopsHaveLines = stops.some((s) => s.lines.length);
-    renderStops();
+    engine && engine.setStops(stops, stopsHaveLines);
     if (!stops.length && j.status !== 'error' && ++stopsTries < 20) setTimeout(loadStops, 15000);
   } catch {}
 }
@@ -275,9 +280,9 @@ loadStops();
 
 // ---- zmiana języka: odśwież teksty generowane dynamicznie ----
 addEventListener('langchange', () => {
-  geoText(); lineNote(); drawFilter(); drawForm(); updatePlace(); renderReports(); renderChat(); hb();
+  pushLines(); geoText(); lineNote(); drawFilter(); drawForm(); updatePlace(); renderReports(); renderChat(); hb();
 });
-geoText();
+geoText(); pushLines();
 
 // ---- offline + PWA ----
 const off = () => $('#offline').hidden = navigator.onLine;

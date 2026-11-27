@@ -15,7 +15,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="/styles.css">
 <title>Kanary Opole</title>
 </head>
@@ -28,10 +27,12 @@
 
 <main>
   <section id="tab-map" class="tab active"><div id="map"></div>
+    <div id="mapErr" class="maperr" hidden><p data-i18n="map_fail"></p><button class="btn" onclick="location.reload()" data-i18n="retry"></button></div>
     <div id="noToday" class="banner" role="status" hidden><span class="bico"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span data-i18n="no_today">Dziś nie zauważono jeszcze kontrolerów</span></div>
     <button id="lineBtn" class="glass" data-i18n-aria="filter_line" aria-label="Filtr linii"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button>
     <button id="locate" class="glass" data-i18n-aria="locate_aria" aria-label="Moja lokalizacja"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></button>
     <button id="listBtn" class="glass" data-i18n-aria="list_aria" aria-label="Lista zgłoszeń"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><i id="listCount" hidden></i></button>
+    <button id="tiltBtn" class="glass" data-i18n-aria="tilt_aria" aria-label="3D" hidden><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg></button>
     <div id="linePanel" class="linepanel" hidden>
       <input id="lineSearch" type="search" data-i18n-ph="line_search_ph" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
       <div id="lineChips" class="chips"></div>
@@ -89,9 +90,15 @@
     <p class="lead" data-i18n="set_lead"></p>
     <div class="row col"><span data-i18n="lang_l">Język</span><div id="langRow" class="langrow" role="radiogroup"></div></div>
     <label class="row"><span data-i18n="map_theme">Styl mapy</span>
-      <select id="setTheme"><option value="voyager" data-i18n="th_voyager"></option><option value="osm" data-i18n="th_osm"></option><option value="light" data-i18n="th_light"></option><option value="dark" data-i18n="th_dark"></option></select></label>
-    <label class="row"><span data-i18n="notify">Powiadomienia</span>
-      <input type="checkbox" id="setNotify"></label>
+      <select id="setTheme"><option value="liberty" data-i18n="th_liberty"></option><option value="voyager" data-i18n="th_voyager"></option><option value="dark" data-i18n="th_dark"></option><option value="osm" data-i18n="th_osm"></option></select></label>
+    <div class="row col" id="pushBox">
+      <label class="rl"><span data-i18n="push_t">Powiadomienia push</span><input type="checkbox" id="pushOn"></label>
+      <p class="muted" data-i18n="push_desc" style="margin:0"></p>
+      <label class="rl"><span class="muted" data-i18n="push_radius_l"></span>
+        <select id="pushRadius"><option value="0" data-i18n="push_r0"></option><option value="500" data-i18n="push_r500"></option><option value="1000" data-i18n="push_r1000"></option><option value="2000" data-i18n="push_r2000"></option><option value="5000" data-i18n="push_r5000"></option></select></label>
+      <div><span class="muted" data-i18n="push_lines_l"></span><div id="pushLines" class="chips"></div></div>
+      <p class="muted" id="pushIos" hidden data-i18n="push_ios" style="margin:0"></p>
+    </div>
     <div class="row"><span><span data-i18n="geo">Geolokalizacja</span> <span id="geoState" class="muted">—</span></span>
       <button id="geoAsk" class="btn sm" data-i18n="allow">Zezwól</button></div>
     <p class="muted" data-i18n="about"></p>
@@ -127,9 +134,9 @@
   <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span data-i18n="nav_settings">Ustawienia</span></button>
 </nav>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/i18n.js"></script>
 <script src="/guide.js"></script>
+<script src="/map-engine.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>
