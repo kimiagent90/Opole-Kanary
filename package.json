@@ -1,7 +1,13 @@
 {
   "name": "kanary-opole",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" }
+  "scripts": {
+    "prestart": "npm install --omit=dev --no-audit --no-fund || echo \"npm install nie powiodl sie, startuje z tym co jest\"",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "engines": { "node": ">=22" }
 }

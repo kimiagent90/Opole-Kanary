@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#050d24">
+<link rel="icon" href="/icon-64.png" type="image/png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<link rel="stylesheet" href="/admin/admin.css">
+<title>Kanary Opole — админ-панель</title>
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <form id="loginForm" class="lcard" autocomplete="on">
+    <img src="/icon-192.png" alt="" width="64" height="64">
+    <h1>Kanary Opole</h1>
+    <p class="sub">Админ-панель</p>
+    <input id="lu" name="username" type="text" placeholder="Логин" autocomplete="username" required>
+    <input id="lp" name="password" type="password" placeholder="Пароль" autocomplete="current-password" required>
+    <button class="btn pri" type="submit">Войти</button>
+    <p id="lerr" class="lerr"></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand"><img src="/icon-64.png" alt="" width="34" height="34"><div><b>Kanary Opole</b><span id="dbinfo">админ-панель</span></div></div>
+    <div class="topr"><span class="live"><i></i><b id="liveOnline">0</b> онлайн</span><button id="logout" class="btn ghost sm">Выйти</button></div>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-t="overview" class="on">Обзор</button>
+    <button data-t="reports">Метки <em id="nReports"></em></button>
+    <button data-t="users">Пользователи</button>
+    <button data-t="chat">Чат</button>
+    <button data-t="feedback">Обращения <em id="nFeedback" class="alert"></em></button>
+  </nav>
+
+  <main>
+    <section id="p-overview" class="pane on">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <div class="card"><h3>Уникальные пользователи за 14 дней</h3><div id="chUsers" class="chart"></div></div>
+        <div class="card"><h3>Метки за 14 дней</h3><div id="chReports" class="chart"></div></div>
+      </div>
+      <div class="card info" id="sysinfo"></div>
+    </section>
+
+    <section id="p-reports" class="pane">
+      <div class="bar"><div class="pills" id="fReports"><button data-f="active" class="on">Активные</button><button data-f="today">Сегодня</button><button data-f="all">7 дней</button></div>
+        <button class="btn danger sm" data-confirm="Очистить всю карту?" id="clearMap">Очистить карту</button></div>
+      <div id="listReports" class="list"></div>
+    </section>
+
+    <section id="p-users" class="pane">
+      <div class="bar"><div class="pills" id="fUsers"><button data-f="online" class="on">Онлайн</button><button data-f="all">Все</button><button data-f="blocked">Заблокированные</button></div></div>
+      <div id="listUsers" class="list"></div>
+    </section>
+
+    <section id="p-chat" class="pane">
+      <div class="bar"><span class="muted">Последние 200 сообщений</span><button class="btn danger sm" data-confirm="Удалить весь чат?" id="clearChat">Очистить чат</button></div>
+      <div id="listChat" class="list"></div>
+    </section>
+
+    <section id="p-feedback" class="pane">
+      <div class="bar"><div class="pills" id="fFeedback"><button data-f="new" class="on">Новые</button><button data-f="all">Все</button></div></div>
+      <div id="listFeedback" class="list"></div>
+    </section>
+  </main>
+</div>
+<div id="toast"></div>
+<script src="/admin/admin.js"></script>
+</body>
+</html>

@@ -20,82 +20,115 @@
 <title>Kanary Opole</title>
 </head>
 <body>
-<div id="offline" hidden>Brak połączenia. Pokazuję ostatnie dane.</div>
+<div id="offline" hidden data-i18n="offline">Brak połączenia. Pokazuję ostatnie dane.</div>
 <div id="toast" role="status" aria-live="polite"></div>
+
+<button id="langBtn" class="langbtn" aria-haspopup="menu" aria-expanded="false" aria-label="Language / Język"><span id="langFlag" class="flag"></span></button>
+<div id="langMenu" class="langmenu" role="menu" hidden></div>
 
 <main>
   <section id="tab-map" class="tab active"><div id="map"></div>
-    <button id="lineBtn" class="glass" aria-label="Filtr linii"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button>
-    <button id="locate" class="glass" aria-label="Moja lokalizacja"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></button>
+    <div id="noToday" class="banner" role="status" hidden><span class="bico"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span data-i18n="no_today">Dziś nie zauważono jeszcze kontrolerów</span></div>
+    <button id="lineBtn" class="glass" data-i18n-aria="filter_line" aria-label="Filtr linii"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button>
+    <button id="locate" class="glass" data-i18n-aria="locate_aria" aria-label="Moja lokalizacja"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></button>
+    <button id="listBtn" class="glass" data-i18n-aria="list_aria" aria-label="Lista zgłoszeń"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><i id="listCount" hidden></i></button>
     <div id="linePanel" class="linepanel" hidden>
-      <input id="lineSearch" type="search" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
+      <input id="lineSearch" type="search" data-i18n-ph="line_search_ph" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
       <div id="lineChips" class="chips"></div>
-      <p class="muted" id="lineNote" style="margin:10px 0 0">Wybierz linię, aby pokazać tylko jej zgłoszenia i przystanki.</p>
+      <p class="muted" id="lineNote" style="margin:10px 0 0"></p>
     </div>
-    <div id="hint" class="hint" hidden><span>Dotknij mapy, aby wskazać miejsce</span><button id="hintCancel" class="btn ghost sm">Anuluj</button></div>
+    <div id="hint" class="hint" hidden><span data-i18n="hint_pick">Dotknij mapy, aby wskazać miejsce</span><button id="hintCancel" class="btn ghost sm" data-i18n="cancel">Anuluj</button></div>
     <button id="report" class="sos"><span class="ico"><svg viewBox="8 6 32 32" aria-hidden="true">
       <path d="M24 13.5V11M29.8 15.6l1.6-1.9M18.2 15.6l-1.6-1.9M32.9 20.9l2.4-.4M15.1 20.9l-2.4-.4" stroke="#ff9aa2" stroke-width="1.7" stroke-linecap="round" fill="none"/>
       <path d="M17.5 27v-4.5a6.5 6.5 0 0 1 13 0V27z" fill="#ff2d3d"/>
       <path d="M19.6 22.4a4.6 4.6 0 0 1 2.8-4.2" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-      <rect x="15" y="27" width="18" height="3.6" rx="1.2" fill="#d7def2"/><rect x="12.5" y="30.4" width="23" height="2.6" rx="1.2" fill="#8da0cf"/></svg></span>Widzę kontrolera</button>
+      <rect x="15" y="27" width="18" height="3.6" rx="1.2" fill="#d7def2"/><rect x="12.5" y="30.4" width="23" height="2.6" rx="1.2" fill="#8da0cf"/></svg></span><span data-i18n="report_btn">Widzę kontrolera</span></button>
   </section>
 
-  <section id="tab-buses" class="tab tabfull"><h2>Autobusy na żywo</h2>
-    <p class="lead">Oficjalna mapa MZK Opole (DIP / OnTime). Dane pochodzą bezpośrednio z dip.mzkopole.pl.</p>
+  <section id="tab-buses" class="tab tabfull"><h2 data-i18n="buses_t">Autobusy na żywo</h2>
+    <p class="lead" data-i18n="buses_lead"></p>
     <iframe id="dip" title="DIP MZK Opole" src="https://dip.mzkopole.pl/" loading="lazy" referrerpolicy="no-referrer"></iframe>
-    <a class="btn" href="https://dip.mzkopole.pl/" target="_blank" rel="noopener">Otwórz DIP w nowej karcie</a>
+    <a class="btn" href="https://dip.mzkopole.pl/" target="_blank" rel="noopener" data-i18n="buses_open"></a>
   </section>
 
-  <section id="tab-feed" class="tab"><h2>Aktywność</h2>
-    <p class="lead">Najnowsze zgłoszenia mieszkańców.</p>
-    <div class="legend"><span>Przed chwilą</span><i></i><span>3 godz. temu</span></div>
+  <section id="tab-feed" class="tab"><h2 data-i18n="feed_t">Aktywność</h2>
+    <p class="lead" data-i18n="feed_lead"></p>
+    <div class="legend"><span data-i18n="feed_new"></span><i></i><span data-i18n="feed_old"></span></div>
     <div id="feedList"></div></section>
+
+  <section id="tab-chat" class="tab tabchat">
+    <h2 data-i18n="chat_t">Czat</h2>
+    <p class="lead" data-i18n="chat_lead"></p>
+    <div id="chatList" class="chatlist" aria-live="polite"></div>
+    <p id="blockedNote" class="err" hidden data-i18n="e_blocked"></p>
+    <form id="chatForm" class="compose" autocomplete="off">
+      <input id="nick" type="text" maxlength="20" data-i18n-ph="nick_ph" placeholder="Pseudonim" class="nick">
+      <div class="msgrow">
+        <input id="msg" type="text" maxlength="300" data-i18n-ph="msg_ph" placeholder="Napisz wiadomość…">
+        <button id="msgSend" class="sendbtn" type="submit" data-i18n-aria="send_aria" aria-label="Wyślij wiadomość"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></svg></button>
+      </div>
+    </form>
+  </section>
 
   <section id="tab-guide" class="tab"></section>
 
-  <section id="tab-settings" class="tab"><h2>Ustawienia</h2>
-    <p class="lead">Dopasuj aplikację do siebie.</p>
-    <label class="row">Motyw mapy
-      <select id="setTheme"><option value="osm">Standardowa (OpenStreetMap)</option><option value="light">Jasna</option><option value="dark">Ciemna</option></select></label>
-    <label class="row">Powiadomienia o nowych zgłoszeniach
+  <section id="tab-ideas" class="tab"><h2 data-i18n="ideas_t">Pomysły i błędy</h2>
+    <p class="lead" data-i18n="ideas_lead"></p>
+    <div class="seg3" id="fbKind" role="tablist">
+      <button type="button" data-k="idea" class="on" data-i18n="k_idea">Pomysł</button>
+      <button type="button" data-k="bug" data-i18n="k_bug">Błąd</button>
+      <button type="button" data-k="other" data-i18n="k_other">Inne</button>
+    </div>
+    <textarea id="fbText" rows="6" maxlength="1000" data-i18n-ph="fb_ph" placeholder="Opisz swój pomysł lub problem…"></textarea>
+    <input id="fbContact" type="text" maxlength="100" data-i18n-ph="fb_contact_ph" placeholder="Kontakt (opcjonalnie)" style="width:100%;margin-top:10px">
+    <button id="fbSend" class="btn" style="width:100%;margin-top:12px" data-i18n="fb_send">Wyślij do administratora</button>
+    <p id="fbErr" class="err"></p>
+  </section>
+
+  <section id="tab-settings" class="tab"><h2 data-i18n="set_t">Ustawienia</h2>
+    <p class="lead" data-i18n="set_lead"></p>
+    <div class="row col"><span data-i18n="lang_l">Język</span><div id="langRow" class="langrow" role="radiogroup"></div></div>
+    <label class="row"><span data-i18n="map_theme">Styl mapy</span>
+      <select id="setTheme"><option value="voyager" data-i18n="th_voyager"></option><option value="osm" data-i18n="th_osm"></option><option value="light" data-i18n="th_light"></option><option value="dark" data-i18n="th_dark"></option></select></label>
+    <label class="row"><span data-i18n="notify">Powiadomienia</span>
       <input type="checkbox" id="setNotify"></label>
-    <div class="row">Geolokalizacja <span id="geoState" class="muted">—</span>
-      <button id="geoAsk" class="btn sm">Zezwól</button></div>
-    <p class="muted">Kanary Opole to nieoficjalna aplikacja, niezwiązana z MZK Opole.
-      Zgłoszenia tworzą użytkownicy i mogą być nieprecyzyjne. Znaczek na mapie stopniowo szarzeje i znika po 3 godzinach bez potwierdzeń.
-      Mapa: © OpenStreetMap contributors, © CARTO.</p>
+    <div class="row"><span><span data-i18n="geo">Geolokalizacja</span> <span id="geoState" class="muted">—</span></span>
+      <button id="geoAsk" class="btn sm" data-i18n="allow">Zezwól</button></div>
+    <p class="muted" data-i18n="about"></p>
   </section>
 </main>
 
 <div id="sheet" hidden>
   <div class="sheet-body">
-    <h3>Nowe zgłoszenie</h3>
+    <h3 data-i18n="new_report">Nowe zgłoszenie</h3>
     <p class="muted" id="placeInfo" style="margin:0 0 10px"></p>
-    <button id="pickOnMap" class="btn ghost">Wskaż miejsce na mapie</button>
-    <label>Liczba kontrolerów</label>
-    <div class="stepper"><button id="minus" aria-label="Mniej">−</button><span id="cnt">1</span><button id="plus" aria-label="Więcej">+</button></div>
-    <label for="transport">Środek transportu</label><select id="transport"><option>Autobus</option></select>
-    <label for="routeSearch">Linia (opcjonalnie)</label>
-    <input id="routeSearch" type="search" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
+    <button id="pickOnMap" class="btn ghost" data-i18n="pick_on_map">Wskaż miejsce na mapie</button>
+    <label data-i18n="count_l">Liczba kontrolerów</label>
+    <div class="stepper"><button id="minus" data-i18n-aria="less" aria-label="Mniej">−</button><span id="cnt">1</span><button id="plus" data-i18n-aria="more" aria-label="Więcej">+</button></div>
+    <label for="transport" data-i18n="transport_l">Środek transportu</label><select id="transport"><option data-i18n="bus">Autobus</option></select>
+    <label for="routeSearch" data-i18n="line_l">Linia (opcjonalnie)</label>
+    <input id="routeSearch" type="search" data-i18n-ph="line_search_ph" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
     <div id="routeChips" class="chips"></div>
     <input id="route" type="hidden">
-    <label for="comment">Komentarz (opcjonalnie)</label>
-    <input id="comment" type="text" maxlength="140" placeholder="np. w stronę Dworca Głównego" autocomplete="off">
-    <div class="qc" id="quick"><button type="button" class="chip">W stronę centrum</button><button type="button" class="chip">Od centrum</button><button type="button" class="chip">Na przystanku</button><button type="button" class="chip">W autobusie</button><button type="button" class="chip">Wysiadają</button></div>
-    <div class="actions"><button id="cancel" class="btn ghost">Anuluj</button><button id="send" class="btn danger">Wyślij</button></div>
+    <label for="comment" data-i18n="comment_l">Komentarz (opcjonalnie)</label>
+    <input id="comment" type="text" maxlength="140" data-i18n-ph="comment_ph" placeholder="np. w stronę Dworca Głównego" autocomplete="off">
+    <div class="qc" id="quick"><button type="button" class="chip" data-i18n="q1"></button><button type="button" class="chip" data-i18n="q2"></button><button type="button" class="chip" data-i18n="q3"></button><button type="button" class="chip" data-i18n="q4"></button><button type="button" class="chip" data-i18n="q5"></button></div>
+    <div class="actions"><button id="cancel" class="btn ghost" data-i18n="cancel">Anuluj</button><button id="send" class="btn danger" data-i18n="send">Wyślij</button></div>
     <p id="err" class="err"></p>
   </div>
 </div>
 
 <nav aria-label="Nawigacja">
-  <button data-tab="map" class="on"><svg viewBox="0 0 24 24"><path d="M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5z"/><path d="M9 4v13M15 6.5v13"/></svg><span>Mapa</span></button>
-  <button data-tab="buses"><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="14" rx="3"/><path d="M4 11h16M8 21v-3.5M16 21v-3.5"/></svg><span>Autobusy</span></button>
-  <button data-tab="feed"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>Aktywność</span></button>
-  <button data-tab="guide"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M12 8v6M9.5 11.8l2.5 2.5 2.5-2.5"/></svg><span>Instrukcja</span></button>
-  <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Ustawienia</span></button>
+  <button data-tab="map" class="on"><svg viewBox="0 0 24 24"><path d="M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5z"/><path d="M9 4v13M15 6.5v13"/></svg><span data-i18n="nav_map">Mapa</span></button>
+  <button data-tab="buses"><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="14" rx="3"/><path d="M4 11h16M8 21v-3.5M16 21v-3.5"/></svg><span data-i18n="nav_buses">Autobusy</span></button>
+  <button data-tab="chat"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v11H11l-4.5 3.5v-3.5H4z"/><path d="M8 10h8M8 13h5"/></svg><i id="chatBadge" class="badge-dot" hidden></i><span data-i18n="nav_chat">Czat</span></button>
+  <button data-tab="guide"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M12 8v6M9.5 11.8l2.5 2.5 2.5-2.5"/></svg><span data-i18n="nav_guide">Instrukcja</span></button>
+  <button data-tab="ideas"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span data-i18n="nav_ideas">Pomysły</span></button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span data-i18n="nav_settings">Ustawienia</span></button>
 </nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/i18n.js"></script>
 <script src="/guide.js"></script>
 <script src="/app.js"></script>
 </body>
