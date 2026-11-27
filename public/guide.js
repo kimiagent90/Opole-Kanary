@@ -93,18 +93,41 @@ ${T(28, 127, 5.6, '#fff', t('s_kanary'), 'text-anchor="middle"')}
 ${hl(10, 84, 36, 50, 10)}`);
 
 const GUIDE = () => ({
+  tour: { name: t('g_tour_name'), intro: t('g_tour_intro'), steps: [] },
   ios: { name: t('g_ios_name'), intro: t('g_ios_intro'), steps: [1, 2, 3, 4, 5].map((n, i) => [t('g_ios' + n), t('g_ios' + n + 't'), [iosStep1, iosStep2, iosStep3, iosStep4, iosStep5][i]]) },
   android: { name: t('g_and_name'), intro: t('g_and_intro'), steps: [1, 2, 3, 4, 5].map((n, i) => [t('g_and' + n), t('g_and' + n + 't'), [andStep1, andStep2, andStep3, andStep4, andStep5][i]]) },
 });
 
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-let which = 'android';
-try { which = localStorage.getItem('guideOs') || (isIOS ? 'ios' : 'android'); } catch { which = isIOS ? 'ios' : 'android'; }
-if (which !== 'ios' && which !== 'android') which = 'android';
+let which = 'tour';
+try { which = localStorage.getItem('guideOs') || 'tour'; } catch { which = 'tour'; }
+if (!['tour', 'ios', 'android'].includes(which)) which = 'tour';
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 let deferred = null;
 addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; draw(); });
 addEventListener('appinstalled', () => { deferred = null; draw(); });
+
+
+// ---- przewodnik po przyciskach: zrzut ekranu ze strzałkami (współrzędne w układzie 1191x2245) ----
+const TOUR = [
+  { k: 'lang', x: 1030, y: 93, side: 'r' }, { k: 'filter', x: 1030, y: 243, side: 'r' }, { k: 'locate', x: 1030, y: 393, side: 'r' },
+  { k: 'list', x: 1030, y: 543, side: 'r' }, { k: '3d', x: 1030, y: 693, side: 'r' }, { k: 'tips', x: 1030, y: 843, side: 'r' },
+  { k: 'pin', x: 690, y: 960, px: 330, py: 1090 }, { k: 'sos', x: 595, y: 1820, px: 595, py: 1650, c: 1 }, { k: 'compass', x: 83, y: 1870, px: 170, py: 1740 },
+];
+function tourSvg() {
+  const parts = TOUR.map((o) => { const text = t('lbl_' + o.k), w = text.length * 23 + 40, h = 66;
+    let bx, by, sx, sy;
+    if (o.side === 'r') { bx = 965 - w; by = o.y - h / 2; sx = 965; sy = o.y; }
+    else if (o.c) { bx = o.px - w / 2; by = o.py - h / 2; sx = o.px; sy = o.py + h / 2; }
+    else { bx = o.px; by = o.py - h / 2; sx = bx + w / 2; sy = by + h; if (o.k === 'compass') { sx = bx + 30; } }
+    const tx = o.side === 'r' ? o.x - 8 : o.x, ty = o.side === 'r' ? o.y : o.y;
+    return `<path d="M${sx} ${sy} L${tx} ${ty}" stroke="#ff2d3d" stroke-width="7" stroke-linecap="round" marker-end="url(#ah)"/>` +
+      `<rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="33" fill="#0a1430" stroke="#fff" stroke-opacity=".85" stroke-width="3"/>` +
+      `<text x="${bx + w / 2}" y="${by + h / 2 + 14}" text-anchor="middle" font-size="40" font-weight="700" fill="#fff" font-family="Inter,system-ui,sans-serif">${text}</text>`; }).join('');
+  return `<svg viewBox="0 0 1191 2245" class="tourmap" role="img" aria-label="${t('g_tour_name')}"><image href="/tour.jpg" width="1191" height="2245"/>` +
+    `<defs><marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4.2" markerHeight="4.2" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ff2d3d"/></marker></defs>${parts}</svg>`;
+}
+const tourLegend = () => ['lang', 'filter', 'locate', 'list', '3d', 'tips', 'pin', 'sos', 'compass', 'nav'].map((k) => `<li><b>${t('lbl_' + k)}</b><span>${t('ex_' + k)}</span></li>`).join('');
 
 function draw() {
   const G = GUIDE(), g = G[which];
@@ -114,8 +137,9 @@ function draw() {
   root.innerHTML = `<h2>${t('g_title')}</h2><p class="lead">${t('g_lead')}</p>${cta}
   <div class="seg" role="tablist">${Object.entries(G).map(([k, v]) => `<button role="tab" data-os="${k}" aria-selected="${k === which}" class="${k === which ? 'on' : ''}">${v.name}</button>`).join('')}</div>
   <p class="muted" style="margin:0 2px 14px">${g.intro}</p>
-  <ol class="steps">${g.steps.map(([title, text, art], i) => `<li class="gstep">${art()}<div><span class="gnum">${i + 1}</span><h3>${title}</h3><p>${text}</p></div></li>`).join('')}</ol>
-  <p class="note">${t('g_note')}</p>`;
+  ${which === 'tour' ? `${tourSvg()}<ul class="tourlist">${tourLegend()}</ul>` :
+  `<ol class="steps">${g.steps.map(([title, text, art], i) => `<li class="gstep">${art()}<div><span class="gnum">${i + 1}</span><h3>${title}</h3><p>${text}</p></div></li>`).join('')}</ol>
+  <p class="note">${t('g_note')}</p>`}`;
   root.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { which = b.dataset.os; try { localStorage.setItem('guideOs', which); } catch {} draw(); });
   const inst = root.querySelector('#installNow');
   if (inst) inst.onclick = async () => { if (!deferred) return; deferred.prompt(); try { await deferred.userChoice; } catch {} deferred = null; draw(); };
