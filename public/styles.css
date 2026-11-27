@@ -218,3 +218,20 @@ textarea{width:100%;background:#071236;color:var(--tx);border:1px solid var(--li
 .rl{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .rl select{max-width:55%}
 #pushBox .chips{max-height:116px}
+
+/* ---------- prawa pasażera ---------- */
+#tipsBtn{top:calc(282px + var(--safe-t))}
+.tsec{background:var(--panel);border:1px solid var(--line);border-radius:18px;margin-bottom:10px;overflow:hidden}
+.tsec summary{list-style:none;cursor:pointer;padding:14px 16px;font:700 16px var(--disp);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tsec summary::-webkit-details-marker{display:none}
+.tsec summary::after{content:"";flex:none;width:9px;height:9px;border-right:2px solid var(--blue2);border-bottom:2px solid var(--blue2);transform:rotate(45deg);transition:transform .2s}
+.tsec[open] summary::after{transform:rotate(-135deg)}
+.tsec[open] summary{border-bottom:1px solid var(--line)}
+.titem{padding:12px 16px;border-bottom:1px solid rgba(34,58,122,.6)}
+.titem:last-child{border-bottom:0}
+.titem b{display:block;font-size:15px;margin-bottom:3px}
+.titem p,.tp{margin:0;color:var(--mut);font-size:14px;line-height:1.45}
+.tp{padding:12px 16px 0}
+.tlist{margin:0;padding:10px 16px 14px 34px;color:var(--mut);font-size:14px;line-height:1.45}
+.tlist li{margin:6px 0}
+.tnote{margin:10px 16px 14px;padding:10px 12px;border-radius:12px;background:rgba(255,176,32,.12);border-left:3px solid var(--amber);font-size:13.5px}

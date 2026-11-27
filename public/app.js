@@ -278,8 +278,24 @@ async function loadStops() {
 }
 loadStops();
 
+
+// ---- prawa pasażera (treść w 4 językach, pokazywana wg wybranego języka) ----
+let TIPS = null;
+async function renderTips() {
+  if (!TIPS) { try { TIPS = await (await fetch('/tips.json')).json(); } catch { return; } }
+  const d = TIPS[I18N.lang] || TIPS.pl;
+  const blk = (b) => b.k === 'li' ? `<li>${esc(b.t)}</li>` : b.k === 'note' ? `<div class="tnote">${esc(b.t)}</div>` : b.k === 'item' ? `<div class="titem"><b>${esc(b.h)}</b><p>${esc(b.t)}</p></div>` : `<p class="tp">${esc(b.t)}</p>`;
+  $('#tipsBody').innerHTML = d.secs.map((s, i) => { let html = '', ul = '';
+    s.b.forEach((b) => { if (b.k === 'li') ul += blk(b); else { if (ul) { html += `<ul class="tlist">${ul}</ul>`; ul = ''; } html += blk(b); } });
+    if (ul) html += `<ul class="tlist">${ul}</ul>`;
+    return `<details class="tsec"${i === 0 ? ' open' : ''}><summary>${esc(s.h)}</summary>${html}</details>`; }).join('') + (d.foot[0] ? `<p class="muted" style="margin:12px 2px 0">${esc(d.foot[0])}</p>` : '');
+}
+const openTips = () => { gotoTab('tips'); renderTips(); };
+$('#tipsBtn').onclick = openTips; $('#tipsOpen').onclick = openTips;
+
 // ---- zmiana języka: odśwież teksty generowane dynamicznie ----
 addEventListener('langchange', () => {
+  if (curTab === 'tips') renderTips();
   pushLines(); geoText(); lineNote(); drawFilter(); drawForm(); updatePlace(); renderReports(); renderChat(); hb();
 });
 geoText(); pushLines();

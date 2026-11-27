@@ -33,6 +33,7 @@
     <button id="locate" class="glass" data-i18n-aria="locate_aria" aria-label="Moja lokalizacja"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg></button>
     <button id="listBtn" class="glass" data-i18n-aria="list_aria" aria-label="Lista zgłoszeń"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><i id="listCount" hidden></i></button>
     <button id="tiltBtn" class="glass" data-i18n-aria="tilt_aria" aria-label="3D" hidden><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg></button>
+    <button id="tipsBtn" class="glass" data-i18n-aria="tips_aria" aria-label="Tips"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.500-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
     <div id="linePanel" class="linepanel" hidden>
       <input id="lineSearch" type="search" data-i18n-ph="line_search_ph" placeholder="Szukaj linii, np. 12 lub N1" autocomplete="off">
       <div id="lineChips" class="chips"></div>
@@ -71,6 +72,11 @@
     </form>
   </section>
 
+  <section id="tab-tips" class="tab"><h2 data-i18n="tips_t">Prawa pasażera</h2>
+    <p class="lead" data-i18n="tips_lead"></p>
+    <div id="tipsBody"></div>
+    <p class="note" data-i18n="tips_note"></p></section>
+
   <section id="tab-guide" class="tab"></section>
 
   <section id="tab-ideas" class="tab"><h2 data-i18n="ideas_t">Pomysły i błędy</h2>
@@ -101,6 +107,7 @@
     </div>
     <div class="row"><span><span data-i18n="geo">Geolokalizacja</span> <span id="geoState" class="muted">—</span></span>
       <button id="geoAsk" class="btn sm" data-i18n="allow">Zezwól</button></div>
+    <button id="tipsOpen" class="btn ghost" style="width:100%;margin-bottom:12px" data-i18n="tips_open"></button>
     <p class="muted" data-i18n="about"></p>
   </section>
 </main>
